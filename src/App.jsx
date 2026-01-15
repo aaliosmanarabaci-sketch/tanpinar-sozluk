@@ -4,7 +4,7 @@ import { Search, BookOpen, Feather, Info, X, Compass, BarChart2, Shuffle, Trendi
 // Database ve Utilities
 import { getAllWords } from './services/database.js';
 import { DICTIONARY_DATA } from './data/dictionary.js';
-import { textSizeClass, titleSizeClass, POPULAR_SEARCHES } from './utils/constants.js';
+import { textSizeClass, titleSizeClass } from './utils/constants.js';
 import { getDailyWord, getRelatedWords, calculateStats, filterWords } from './utils/helpers.js';
 
 const App = () => {
@@ -48,6 +48,16 @@ const App = () => {
     }
   });
 
+  // Kelime görüntüleme sayıları (popüler aramalar için)
+  const [wordViews, setWordViews] = useState(() => {
+    try {
+      const saved = localStorage.getItem('tanpinar-word-views');
+      return saved ? JSON.parse(saved) : {};
+    } catch {
+      return {};
+    }
+  });
+
   const [currentNote, setCurrentNote] = useState("");
   const [isNoteSaved, setIsNoteSaved] = useState(false);
   const noteSaveTimeoutRef = useRef(null);
@@ -69,6 +79,15 @@ const App = () => {
       console.error('Notlar kaydedilemedi:', err);
     }
   }, [notes]);
+
+  // Kelime görüntüleme sayılarını LocalStorage'a kaydet
+  useEffect(() => {
+    try {
+      localStorage.setItem('tanpinar-word-views', JSON.stringify(wordViews));
+    } catch (err) {
+      console.error('Görüntüleme sayıları kaydedilemedi:', err);
+    }
+  }, [wordViews]);
 
   // Veritabanından kelimeleri çek
   useEffect(() => {
@@ -141,6 +160,24 @@ const App = () => {
   // İstatistikler
   const stats = useMemo(() => calculateStats(words), [words]);
 
+  // Popüler aramalar - En çok açılan kelimeler
+  const popularSearches = useMemo(() => {
+    if (!words || words.length === 0) return [];
+    
+    // Kelime görüntüleme sayılarına göre sırala
+    const wordsWithViews = words
+      .map(word => ({
+        word: word.word,
+        id: word.id,
+        count: wordViews[word.id] || 0
+      }))
+      .filter(item => item.count > 0) // Sadece açılmış kelimeler
+      .sort((a, b) => b.count - a.count) // En çok açılandan en aza
+      .slice(0, 5); // İlk 5 kelime
+    
+    return wordsWithViews;
+  }, [words, wordViews]);
+
   const handleRandomWord = () => {
     if (words.length === 0) return;
     const randomIndex = Math.floor(Math.random() * words.length);
@@ -159,6 +196,12 @@ const App = () => {
       setCurrentNote(notes[selectedWord.id] || "");
       setIsNoteSaved(false);
       setShowNetworkView(false); // Modal açıldığında varsayılan görünüm
+      
+      // Kelime görüntüleme sayısını artır
+      setWordViews(prev => ({
+        ...prev,
+        [selectedWord.id]: (prev[selectedWord.id] || 0) + 1
+      }));
     }
   }, [selectedWord, notes]);
 
@@ -585,22 +628,40 @@ const App = () => {
                       <TrendingUp className="w-5 h-5 text-amber-600" />
                       Popüler Aramalar
                    </h3>
-                   <div className="space-y-3">
-                      {POPULAR_SEARCHES.map((item, index) => (
-                         <div key={index} className="flex items-center justify-between p-3 hover:bg-stone-50 rounded-lg transition-colors group cursor-default">
-                            <div className="flex items-center gap-3">
-                               <span className="flex items-center justify-center w-6 h-6 rounded-full bg-stone-100 text-stone-500 text-xs font-bold group-hover:bg-amber-100 group-hover:text-amber-700 transition-colors">{index + 1}</span>
-                               <span className="font-medium text-stone-700 font-serif text-lg">{item.word}</span>
-                            </div>
-                            <div className="flex items-center gap-2">
-                               <div className="w-16 h-1.5 bg-stone-100 rounded-full overflow-hidden">
-                                  <div className="bg-amber-400 h-full rounded-full" style={{ width: `${(item.count / 150) * 100}%` }}></div>
+                   {popularSearches.length > 0 ? (
+                      <div className="space-y-3">
+                         {popularSearches.map((item, index) => {
+                            const maxCount = popularSearches[0]?.count || 1;
+                            return (
+                               <div 
+                                  key={item.id} 
+                                  className="flex items-center justify-between p-3 hover:bg-stone-50 rounded-lg transition-colors group cursor-pointer"
+                                  onClick={() => {
+                                     const word = words.find(w => w.id === item.id);
+                                     if (word) setSelectedWord(word);
+                                  }}
+                               >
+                                  <div className="flex items-center gap-3">
+                                     <span className="flex items-center justify-center w-6 h-6 rounded-full bg-stone-100 text-stone-500 text-xs font-bold group-hover:bg-amber-100 group-hover:text-amber-700 transition-colors">{index + 1}</span>
+                                     <span className="font-medium text-stone-700 font-serif text-lg">{item.word}</span>
+                                  </div>
+                                  <div className="flex items-center gap-2">
+                                     <div className="w-16 h-1.5 bg-stone-100 rounded-full overflow-hidden">
+                                        <div className="bg-amber-400 h-full rounded-full" style={{ width: `${(item.count / maxCount) * 100}%` }}></div>
+                                     </div>
+                                     <span className="text-sm text-stone-400 font-medium min-w-[3rem] text-right">{item.count}</span>
+                                  </div>
                                </div>
-                               <span className="text-sm text-stone-400 font-medium min-w-[3rem] text-right">{item.count}</span>
-                            </div>
-                         </div>
-                      ))}
-                   </div>
+                            );
+                         })}
+                      </div>
+                   ) : (
+                      <div className="text-center py-8 text-stone-400">
+                         <TrendingUp className="w-12 h-12 mx-auto mb-3 opacity-30" />
+                         <p>Henüz kelime açılmadı.</p>
+                         <p className="text-sm mt-1">Kelimelere tıklayarak popüler aramaları oluşturun.</p>
+                      </div>
+                   )}
                 </div>
             </div>
 
