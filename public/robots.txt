@@ -1,0 +1,7 @@
+User-agent: *
+Allow: /
+
+# Admin paneli gizli tutulmalı
+Disallow: /admin
+
+Sitemap: https://yourdomain.com/sitemap.xml
