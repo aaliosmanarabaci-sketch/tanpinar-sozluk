@@ -1,5 +1,6 @@
 import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { Search, BookOpen, Feather, Info, X, Compass, BarChart2, Shuffle, TrendingUp, Heart, Save, FileText, Network, Loader2, AlertCircle, ChevronDown, ArrowUpAZ } from 'lucide-react';
+import { Analytics } from '@vercel/analytics/react';
 
 // Database ve Utilities
 import { getAllWords } from './services/database.js';
@@ -1009,6 +1010,7 @@ const App = () => {
           </p>
         </div>
       </footer>
+      <Analytics />
     </div>
   );
 };
