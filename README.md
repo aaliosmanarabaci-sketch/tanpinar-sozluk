@@ -27,8 +27,10 @@ npm install
 cp .env.example .env
 ```
 
-Gerekli değişkenler:
-- `VITE_DATABASE_URL`: Neon Database bağlantı string'i
+Gerekli değişkenler (Vercel Environment Variables):
+- `DATABASE_URL`: Neon Database bağlantı string'i (sadece server-side, client'a gitmez)
+
+**ÖNEMLİ GÜVENLİK NOTU:** Database connection string artık sadece server-side (Vercel Functions) kullanılıyor. Client-side'da asla connection string bulunmaz.
 
 ## Çalıştırma
 
@@ -66,7 +68,8 @@ npm run preview
 
 3. **Environment Variables Ekleyin**
    - Vercel Dashboard → Settings → Environment Variables
-   - `VITE_DATABASE_URL` ekleyin (Neon Database connection string)
+   - `DATABASE_URL` ekleyin (Neon Database connection string)
+   - **ÖNEMLİ:** `DATABASE_URL` kullanın, `VITE_` prefix'i olmamalı (sadece server-side kullanılır)
 
 4. **Deploy!**
    - Vercel otomatik olarak build edip deploy edecek

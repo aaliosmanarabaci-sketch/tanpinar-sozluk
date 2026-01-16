@@ -2,7 +2,7 @@ import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { Search, BookOpen, Feather, Info, X, Compass, BarChart2, Shuffle, TrendingUp, Heart, Save, FileText, Network, Loader2, AlertCircle, ChevronDown, ArrowUpAZ } from 'lucide-react';
 
 // Database ve Utilities
-import { getAllWords, incrementWordView, getPopularWords } from './services/database.js';
+import { getAllWords, incrementWordView, getPopularWords } from './services/api.js';
 import { DICTIONARY_DATA } from './data/dictionary.js';
 import { textSizeClass, titleSizeClass } from './utils/constants.js';
 import { getDailyWord, getRelatedWords, calculateStats, filterWords } from './utils/helpers.js';

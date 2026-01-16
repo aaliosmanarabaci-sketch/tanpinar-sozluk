@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { X, Plus, Edit2, Trash2, Save, Lock, LogOut, Loader2 } from 'lucide-react';
-import { getAllWords, addWord, updateWord, deleteWord, getAllBooks, getAllCategories } from '../services/database.js';
+import { getAllWords, addWord, updateWord, deleteWord, getAllBooks, getAllCategories } from '../services/api.js';
 
 const AdminPage = () => {
   const navigate = useNavigate();
