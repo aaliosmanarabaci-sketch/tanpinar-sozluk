@@ -2,7 +2,7 @@ import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { Search, BookOpen, Feather, Info, X, Compass, BarChart2, Shuffle, TrendingUp, Heart, Save, FileText, Network, Loader2, AlertCircle, ChevronDown, ArrowUpAZ } from 'lucide-react';
 
 // Database ve Utilities
-import { getAllWords } from './services/database.js';
+import { getAllWords, incrementWordView, getPopularWords } from './services/database.js';
 import { DICTIONARY_DATA } from './data/dictionary.js';
 import { textSizeClass, titleSizeClass } from './utils/constants.js';
 import { getDailyWord, getRelatedWords, calculateStats, filterWords } from './utils/helpers.js';
@@ -48,15 +48,8 @@ const App = () => {
     }
   });
 
-  // Kelime görüntüleme sayıları (popüler aramalar için)
-  const [wordViews, setWordViews] = useState(() => {
-    try {
-      const saved = localStorage.getItem('tanpinar-word-views');
-      return saved ? JSON.parse(saved) : {};
-    } catch {
-      return {};
-    }
-  });
+  // Popüler aramalar (veritabanından)
+  const [popularSearches, setPopularSearches] = useState([]);
 
   const [currentNote, setCurrentNote] = useState("");
   const [isNoteSaved, setIsNoteSaved] = useState(false);
@@ -80,15 +73,6 @@ const App = () => {
     }
   }, [notes]);
 
-  // Kelime görüntüleme sayılarını LocalStorage'a kaydet
-  useEffect(() => {
-    try {
-      localStorage.setItem('tanpinar-word-views', JSON.stringify(wordViews));
-    } catch (err) {
-      console.error('Görüntüleme sayıları kaydedilemedi:', err);
-    }
-  }, [wordViews]);
-
   // Veritabanından kelimeleri çek
   useEffect(() => {
     const fetchWords = async () => {
@@ -109,6 +93,25 @@ const App = () => {
 
     fetchWords();
   }, []);
+
+  // Popüler aramaları veritabanından çek
+  useEffect(() => {
+    const fetchPopularSearches = async () => {
+      try {
+        const popular = await getPopularWords(5);
+        setPopularSearches(popular);
+      } catch (err) {
+        console.error('Popüler aramalar yüklenirken hata:', err);
+        // Hata durumunda boş array bırak
+        setPopularSearches([]);
+      }
+    };
+
+    // Kelimeler yüklendikten sonra popüler aramaları çek
+    if (words.length > 0) {
+      fetchPopularSearches();
+    }
+  }, [words]);
 
   // Günün Kelimesi Hesabı (Tarihe göre sabit)
   const dailyWord = useMemo(() => getDailyWord(words), [words]);
@@ -160,23 +163,6 @@ const App = () => {
   // İstatistikler
   const stats = useMemo(() => calculateStats(words), [words]);
 
-  // Popüler aramalar - En çok açılan kelimeler
-  const popularSearches = useMemo(() => {
-    if (!words || words.length === 0) return [];
-    
-    // Kelime görüntüleme sayılarına göre sırala
-    const wordsWithViews = words
-      .map(word => ({
-        word: word.word,
-        id: word.id,
-        count: wordViews[word.id] || 0
-      }))
-      .filter(item => item.count > 0) // Sadece açılmış kelimeler
-      .sort((a, b) => b.count - a.count) // En çok açılandan en aza
-      .slice(0, 5); // İlk 5 kelime
-    
-    return wordsWithViews;
-  }, [words, wordViews]);
 
   const handleRandomWord = () => {
     if (words.length === 0) return;
@@ -197,11 +183,17 @@ const App = () => {
       setIsNoteSaved(false);
       setShowNetworkView(false); // Modal açıldığında varsayılan görünüm
       
-      // Kelime görüntüleme sayısını artır
-      setWordViews(prev => ({
-        ...prev,
-        [selectedWord.id]: (prev[selectedWord.id] || 0) + 1
-      }));
+      // Kelime görüntüleme sayısını veritabanında artır
+      incrementWordView(selectedWord.id).then(() => {
+        // Popüler aramaları yeniden yükle (güncel sayıları görmek için)
+        getPopularWords(5).then(popular => {
+          setPopularSearches(popular);
+        }).catch(err => {
+          console.error('Popüler aramalar güncellenirken hata:', err);
+        });
+      }).catch(err => {
+        console.error('Görüntülenme sayısı artırılırken hata:', err);
+      });
     }
   }, [selectedWord, notes]);
 

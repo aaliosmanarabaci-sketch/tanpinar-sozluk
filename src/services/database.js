@@ -236,6 +236,72 @@ export async function deleteWord(id) {
   }
 }
 
+// Kelime görüntülenme sayısını artır
+export async function incrementWordView(wordId) {
+  if (!sql) {
+    throw new Error('Database connection not available');
+  }
+  
+  try {
+    // Önce view_count kolonunun var olup olmadığını kontrol et
+    // Eğer yoksa, oluşturmaya çalış
+    await sql`
+      UPDATE words 
+      SET view_count = COALESCE(view_count, 0) + 1
+      WHERE id = ${wordId}
+    `.catch(async (err) => {
+      // Eğer view_count kolonu yoksa, oluştur
+      if (err.message && err.message.includes('view_count')) {
+        try {
+          await sql`ALTER TABLE words ADD COLUMN IF NOT EXISTS view_count INTEGER DEFAULT 0`;
+          // Tekrar dene
+          await sql`
+            UPDATE words 
+            SET view_count = COALESCE(view_count, 0) + 1
+            WHERE id = ${wordId}
+          `;
+        } catch (alterError) {
+          console.error('view_count kolonu oluşturulamadı:', alterError);
+          // Sessizce devam et, hata verme
+        }
+      } else {
+        throw err;
+      }
+    });
+    return true;
+  } catch (error) {
+    console.error('Görüntülenme sayısı artırma hatası:', error);
+    // Hata olsa bile devam et, kullanıcı deneyimini bozma
+    return false;
+  }
+}
+
+// En çok görüntülenen kelimeleri getir
+export async function getPopularWords(limit = 5) {
+  if (!sql) {
+    throw new Error('Database connection not available');
+  }
+  
+  try {
+    const words = await sql`
+      SELECT id, word, COALESCE(view_count, 0) as view_count
+      FROM words
+      WHERE COALESCE(view_count, 0) > 0
+      ORDER BY view_count DESC, word ASC
+      LIMIT ${limit}
+    `;
+    return words.map(item => ({
+      id: item.id,
+      word: item.word,
+      count: parseInt(item.view_count) || 0
+    }));
+  } catch (error) {
+    console.error('Popüler kelimeler getirme hatası:', error);
+    // Hata durumunda boş array döndür
+    return [];
+  }
+}
+
 // Neon formatını uygulama formatına dönüştür
 function transformWord(dbWord) {
   return {
@@ -246,6 +312,7 @@ function transformWord(dbWord) {
     quote: dbWord.example,    // example -> quote
     category: dbWord.category,
     isWordOfDay: dbWord.is_word_of_day,
+    viewCount: dbWord.view_count || 0,  // Görüntülenme sayısı
     relations: []             // Neon'da relations yok, boş array
   };
 }
